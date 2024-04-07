@@ -24,7 +24,13 @@ dotenv.config()
 connectDB()
 
 //!middleware
-app.use(cors())
+const corsOptions = {
+    origin: 'https://ecommerce-frontend-deploy-f3ojpt2gp-karan-rajeshirkes-projects.vercel.app',
+  };
+
+  app.use(cors(corsOptions));
+
+  
 app.use(express.json())
 // app.use(morgan('dev'))
 
