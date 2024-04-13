@@ -890,3 +890,161 @@ export const brainTreeTokenController = async (req, res) => {
   }
 };
 
+
+
+export const getCategoriesSales=async(req,res)=>
+{
+  try {
+
+    const userId = req.user._id;
+const startDate = new Date(req.params.catDate); // Start date from req.params.catDate
+const endDate = new Date(); // Current date
+
+const allCategories = await categoryModel.find({});
+const categoriesObject = {};
+
+for (let i = 0; i < allCategories.length; i++) {
+  categoriesObject[allCategories[i].name] = 0;
+}
+
+const admin = await adminOrderModel.findOne({ seller: userId }).populate({
+  path: 'products',
+  populate: {
+    path: 'product',
+    select: "category price",
+    populate: {
+      path: 'category'
+    }
+  }
+});
+
+const filteredProducts = admin.products.filter(product => {
+  const orderReceivedDate = new Date(product.orderReceivedDate);
+  const orderYear = orderReceivedDate.getFullYear();
+  const orderMonth = orderReceivedDate.getMonth();
+  const orderDay = orderReceivedDate.getDate();
+
+  const startYear = startDate.getFullYear();
+  const startMonth = startDate.getMonth();
+  const startDay = startDate.getDate();
+
+  const endYear = endDate.getFullYear();
+  const endMonth = endDate.getMonth();
+  const endDay = endDate.getDate();
+
+  return orderYear >= startYear && orderYear <= endYear &&
+         orderMonth >= startMonth && orderMonth <= endMonth &&
+         orderDay >= startDay && orderDay <= endDay;
+});
+
+const pricesArr = [];
+const catNamesArr = [];
+
+if (!admin) {
+  return res.send({ pricesArr, catNamesArr });
+}
+
+for (const product of filteredProducts) {
+  const categoryName = product.product.category.name;
+  const productPrice = product.product.price * parseInt(product.quantity);
+  categoriesObject[categoryName] += productPrice;
+}
+
+for (const categoryName in categoriesObject) {
+  catNamesArr.push(categoryName);
+  pricesArr.push(categoriesObject[categoryName]);
+}
+
+res.send({ pricesArr, catNamesArr });
+
+
+
+
+    // const userId=req.user._id;
+    // const catDate=new Date(req.params.catDate);
+
+    // console.log(catDate);
+    // const todaysDate=new Date();
+
+    // const allCategories=await categoryModel.find({});
+
+
+    // const categoriesObject={};
+
+    // for(let i=0;i<allCategories.length;i++)
+    // {
+    //   categoriesObject[allCategories[i].name]=0;
+    // }
+
+    // const admin=await adminOrderModel.findOne({seller:userId}).populate({
+    //   path:'products',
+    //   populate:
+    //   {
+    //     path:'product',
+    //     select:"category",
+    //     select:"price",
+    //     populate:
+    //     {
+    //       path:'category'
+    //     }
+    //   }
+    // });
+
+
+    // const filteredProducts = admin.products.filter(product => {
+    //   const orderReceivedDate = new Date(product.orderReceivedDate);
+    //   const orderYear = orderReceivedDate.getFullYear();
+    //   const orderMonth = orderReceivedDate.getMonth();
+    //   const orderDay = orderReceivedDate.getDate();
+    
+    //   const targetYear = catDate.getFullYear();
+    //   const targetMonth = catDate.getMonth();
+    //   const targetDay = catDate.getDate();
+
+
+    //   console.log(` order : ${orderYear}  .... ${orderMonth}....${orderDay}.....`);
+    //   console.log(` target :${targetYear}  .... ${targetMonth}....${targetDay}.....`);
+    //   console.log('-----------------');
+
+    
+    //   return orderYear === targetYear && orderMonth === targetMonth && orderDay === targetDay;
+    // });
+
+    // console.log(filteredProducts);
+
+
+    // const pricesArr=[];
+    // const catNamesArr=[];
+
+
+    // if(!admin)
+    // {
+    //    return res.send({pricesArr,catNamesArr})
+    // }
+
+
+    // const {products}=admin
+
+    // for(let i=0;i<products.length;i++)
+    // {
+
+    //   categoriesObject[products[i].product.category.name]=categoriesObject[products[i].product.category.name]+(products[i].product.price*parseInt(products[i].quantity))
+    // }
+
+ 
+
+    // for(const categoryName in categoriesObject)
+    // {
+    //   catNamesArr.push(categoryName);
+    //   pricesArr.push(categoriesObject[categoryName])
+    // }
+    // res.send({pricesArr,catNamesArr})
+
+    
+    
+  } catch (error) {
+
+    console.log(error);
+    
+  }
+}
