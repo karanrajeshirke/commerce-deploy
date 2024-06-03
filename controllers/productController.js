@@ -891,75 +891,65 @@ export const brainTreeTokenController = async (req, res) => {
 };
 
 
-
-export const getCategoriesSales=async(req,res)=>
-{
+export const getCategoriesSales = async (req, res) => {
   try {
-
     const userId = req.user._id;
-const startDate = new Date(req.params.catDate); // Start date from req.params.catDate
-const endDate = new Date(); // Current date
+    const startDate = new Date(req.params.catDate);
+    const endDate = new Date();
 
-const allCategories = await categoryModel.find({});
-const categoriesObject = {};
+    const allCategories = await categoryModel.find({});
+    const categoriesObject = {};
 
-for (let i = 0; i < allCategories.length; i++) {
-  categoriesObject[allCategories[i].name] = 0;
-}
+    allCategories.forEach(category => {
+      categoriesObject[category.name] = 0;
+    });
 
-const admin = await adminOrderModel.findOne({ seller: userId }).populate({
-  path: 'products',
-  populate: {
-    path: 'product',
-    select: "category price",
-    populate: {
-      path: 'category'
+    const admin = await adminOrderModel.findOne({ seller: userId }).populate({
+      path: 'products',
+      populate: {
+        path: 'product',
+        select: "category price",
+        populate: {
+          path: 'category'
+        }
+      }
+    });
+
+    if (!admin || !admin.products) {
+      return res.send({ pricesArr: [], catNamesArr: [] });
     }
-  }
-});
 
-const filteredProducts = admin.products.filter(product => {
-  const orderReceivedDate = new Date(product.orderReceivedDate);
-  const orderYear = orderReceivedDate.getFullYear();
-  const orderMonth = orderReceivedDate.getMonth();
-  const orderDay = orderReceivedDate.getDate();
+    const filteredProducts = admin.products.filter(product => {
+      const orderReceivedDate = new Date(product.orderReceivedDate);
+      return orderReceivedDate >= startDate && orderReceivedDate <= endDate;
+    });
 
-  const startYear = startDate.getFullYear();
-  const startMonth = startDate.getMonth();
-  const startDay = startDate.getDate();
+    filteredProducts.forEach(product => {
+      const categoryName = product.product.category.name;
+      const productPrice = product.product.price * parseInt(product.quantity, 10);
 
-  const endYear = endDate.getFullYear();
-  const endMonth = endDate.getMonth();
-  const endDay = endDate.getDate();
+      if (categoriesObject.hasOwnProperty(categoryName)) {
+        categoriesObject[categoryName] += productPrice;
+      }
+    });
 
-  return orderYear >= startYear && orderYear <= endYear &&
-         orderMonth >= startMonth && orderMonth <= endMonth &&
-         orderDay >= startDay && orderDay <= endDay;
-});
+    const pricesArr = [];
+    const catNamesArr = [];
 
-const pricesArr = [];
-const catNamesArr = [];
+    for (const categoryName in categoriesObject) {
+      if (categoriesObject.hasOwnProperty(categoryName)) {
+        catNamesArr.push(categoryName);
+        pricesArr.push(categoriesObject[categoryName]);
+      }
+    }
 
-if (!admin) {
-  return res.send({ pricesArr, catNamesArr });
-}
+    console.log(catNamesArr);
+    console.log(pricesArr);
 
-for (const product of filteredProducts) {
-  const categoryName = product.product.category.name;
-  const productPrice = product.product.price * parseInt(product.quantity);
-  categoriesObject[categoryName] += productPrice;
-}
+    res.send({ pricesArr, catNamesArr });
 
-for (const categoryName in categoriesObject) {
-  catNamesArr.push(categoryName);
-  pricesArr.push(categoriesObject[categoryName]);
-}
-
-res.send({ pricesArr, catNamesArr });
-        
   } catch (error) {
-
     console.log(error);
-    
+    res.status(500).send("Internal Server Error");
   }
-}
+};
